@@ -3,6 +3,20 @@ document.getElementById('loginButton').addEventListener('click', () => {
     window.location.href = '/login';
   });
   
+  // Check if the user is authenticated (access token exists)
+  const checkAuth = () => {
+    fetch('/check-auth')
+      .then(response => response.json())
+      .then(data => {
+        if (data.authenticated) {
+          // Hide login button and show playlist form
+          document.getElementById('loginButton').style.display = 'none';
+          document.getElementById('playlistForm').style.display = 'block';
+        }
+      })
+      .catch(error => console.error('Error checking auth:', error));
+  };
+  
   // Add dynamic course input fields
   document.getElementById('addCourse').addEventListener('click', () => {
     const courseFields = document.getElementById('courseFields');
@@ -24,7 +38,6 @@ document.getElementById('loginButton').addEventListener('click', () => {
     const courses = Array.from(courseInputs).map(input => input.value);
   
     const mood = document.getElementById('mood').value;
-    const duration = document.getElementById('duration').value;
   
     // Fetch playlist from backend
     try {
@@ -34,26 +47,11 @@ document.getElementById('loginButton').addEventListener('click', () => {
       }
       const playlistHTML = await response.text();
       document.getElementById('playlistContainer').innerHTML = playlistHTML;
-  
-      // Start timer
-      startTimer(duration * 60);
     } catch (error) {
       console.error(error);
       document.getElementById('playlistContainer').innerHTML = 'Failed to generate playlist. Please try again.';
     }
   });
   
-  // Timer function
-  const startTimer = (duration) => {
-    let timer = duration;
-    const timerContainer = document.getElementById('timerContainer');
-    const interval = setInterval(() => {
-      const minutes = Math.floor(timer / 60);
-      const seconds = timer % 60;
-      timerContainer.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-      if (--timer < 0) {
-        clearInterval(interval);
-        timerContainer.textContent = "Time's up!";
-      }
-    }, 1000);
-  };
+  // Check authentication status on page load
+  checkAuth();

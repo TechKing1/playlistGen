@@ -1,36 +1,113 @@
 <!DOCTYPE html>
-<html lang="en">
+<link rel="stylesheet" href="styles.css">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Study Playlist Generator</title>
-  <link rel="stylesheet" href="styles.css">
+    <title>Study Playlist Generator</title>
+    <script>
+        function checkAuthState() {
+            fetch('/check-auth')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.authenticated) {
+                        document.getElementById('login-section').style.display = 'none';
+                        document.getElementById('playlist-form').style.display = 'block';
+                    } else {
+                        document.getElementById('login-section').style.display = 'block';
+                        document.getElementById('playlist-form').style.display = 'none';
+                    }
+                });
+        }
+
+        // Check auth state on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthState();
+
+            // Check auth state when hash changes
+            if (window.location.hash.includes('authenticated=true')) {
+                checkAuthState();
+            }
+        });
+    </script>
 </head>
 <body>
-  <div class="container">
-    <h1>Study Playlist Generator</h1>
-    <button id="loginButton">Login with Spotify</button>
-    <form id="playlistForm" style="display: none;">
-      <div id="courseFields">
-        <div class="courseInput">
-          <label for="course1">Course:</label>
-          <input type="text" id="course1" placeholder="e.g., Operating Systems" required>
+    <div id="login-section">
+        <h1>Study Playlist Generator</h1>
+        <a href="/login" class="login-button">Login with Spotify</a>
+    </div>
+
+    <div id="playlist-form">
+        <h1>Create Study Playlist</h1>
+        <form id="generate-form">
+            <div>
+                <label for="course">Course:</label>
+                <input type="text" id="course" name="course" required>
+            </div>
+            <div>
+                <label for="theme">Theme:</label>
+                <input type="text" id="theme" name="theme" required>
+            </div>
+            <div>
+                <label for="duration">Duration (minutes):</label>
+                <input type="number" id="duration" name="duration" required min="15" max="180">
+            </div>
+            <div>
+                <label for="songCount">Number of Songs:</label>
+                <input type="number" id="songCount" name="songCount" required min="1" max="20" value="5">
+            </div>
+            <button type="submit">Generate Playlist</button>
+        </form>
+        
+        <div id="results" style="display:none">
+            <h2>Your Playlist</h2>
+            <div id="playlist-info"></div>
+            <ul id="song-list"></ul>
         </div>
-      </div>
-      <button type="button" id="addCourse">Add Another Course</button>
-      <label for="mood">Mood:</label>
-      <select id="mood">
-        <option value="focus">Focus</option>
-        <option value="relax">Relax</option>
-        <option value="energize">Energize</option>
-      </select>
-      <label for="duration">Duration (minutes):</label>
-      <input type="number" id="duration" min="5" step="5" value="25">
-      <button type="submit">Generate Playlist</button>
-    </form>
-    <div id="playlistContainer"></div>
-    <div id="timerContainer"></div>
-  </div>
-  <script src="app.js"></script>
+    </div>
+    
+    <script>
+        document.getElementById('generate-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button');
+            const resultsDiv = document.getElementById('results');
+            const songList = document.getElementById('song-list');
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Generating...';
+            
+            try {
+                const response = await fetch('/generate-playlist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        course: form.course.value,
+                        theme: form.theme.value,
+                        duration: form.duration.value,
+                        songCount: form.songCount.value
+                    })
+                });
+        
+                const data = await response.json();
+                
+                if (data.success && data.songs) {
+                    songList.innerHTML = `
+                        <h3>${data.course} - ${data.theme}</h3>
+                        <p>Duration: ${data.duration} minutes</p>
+                        <p>Songs (${data.totalSongs}):</p>
+                        ${data.songs.map(song => `<li>${song}</li>`).join('')}
+                    `;
+                    resultsDiv.style.display = 'block';
+                } else {
+                    throw new Error(data.error || 'Failed to generate playlist');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to generate playlist: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Generate Playlist';
+            }
+        });
+        </script>
 </body>
 </html>
